@@ -1,3 +1,4 @@
+st.write("🚨 VERSÃO NOVA 🚨")
 import streamlit as st
 
 st.set_page_config(page_title="EduCognitivo PRO", layout="wide")
