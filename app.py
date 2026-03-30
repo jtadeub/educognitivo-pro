@@ -1,28 +1,64 @@
 import streamlit as st
-from database import salvar_atividade, listar_atividades
 
 st.set_page_config(page_title="EduCognitivo PRO", layout="wide")
 
-st.sidebar.title("🧠 EduCognitivo PRO")
-menu = st.sidebar.radio("Menu", ["Dashboard", "Gerar", "Histórico"])
+st.title("🧠 EduCognitivo PRO")
 
-if menu == "Dashboard":
-    st.title("Painel Geral")
-    st.info("Sistema funcionando!")
+# Estrutura real
+estrategias = {
+    "Memorizar": {
+        "Mapas Mentais Colaborativos": {
+            "descricao": "Organização visual de ideias com conexões entre conceitos.",
+            "como_fazer": [
+                "Dividir a turma em grupos",
+                "Escolher um tema central",
+                "Criar ramificações com conceitos",
+                "Apresentar o mapa"
+            ],
+            "tempo": "1h30"
+        },
+        "Linha do Tempo": {
+            "descricao": "Representação cronológica de eventos.",
+            "como_fazer": [
+                "Definir tema",
+                "Listar eventos importantes",
+                "Organizar em ordem",
+                "Apresentar resultados"
+            ],
+            "tempo": "1h"
+        }
+    }
+}
 
-elif menu == "Gerar":
-    st.title("Gerar Atividade")
-    titulo = st.text_input("Título")
-    tema = st.text_area("Tema")
-    estrategia = st.text_input("Estratégia")
+# Seleção
+dominio = st.selectbox("Domínio Cognitivo", list(estrategias.keys()))
 
-    if st.button("Gerar"):
-        resultado = f"Atividade gerada para {titulo} - {tema} usando {estrategia}"
-        st.write(resultado)
-        salvar_atividade(titulo, tema, estrategia, resultado)
+estrategia = st.selectbox(
+    "Estratégia",
+    list(estrategias[dominio].keys())
+)
 
-elif menu == "Histórico":
-    st.title("Histórico")
-    dados = listar_atividades()
-    for d in dados:
-        st.write(d)
+titulo = st.text_input("Título da Aula")
+tema = st.text_area("Tema")
+
+if st.button("🚀 Gerar Atividade"):
+
+    dados = estrategias[dominio][estrategia]
+
+    st.subheader("📘 O que é")
+    st.write(dados["descricao"])
+
+    st.subheader("🛠️ Como fazer")
+    for passo in dados["como_fazer"]:
+        st.write(f"- {passo}")
+
+    st.subheader("🧑‍🏫 Roteiro da Aula")
+    st.write(f"Tema: {tema}")
+    st.write("1. Introdução")
+    st.write("2. Desenvolvimento")
+    st.write("3. Atividade prática")
+    st.write("4. Fechamento")
+
+    st.subheader("⏱️ Tempo estimado")
+    st.write(dados["tempo"])
+   
