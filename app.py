@@ -1,73 +1,108 @@
 import streamlit as st
-st.write("🚨 VERSÃO NOVA 🚨")
+from fpdf import FPDF
+from datetime import datetime
+
+# IMPORTANTE: só usa OpenAI se tiver chave
+try:
+    from openai import OpenAI
+    client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
+    usar_ia = True
+except:
+    usar_ia = False
 
 st.set_page_config(page_title="EduCognitivo PRO", layout="wide")
 
 st.title("🧠 EduCognitivo PRO")
 
-# Seleção do domínio cognitivo
+# Sidebar
+st.sidebar.header("👨‍🎓 Gestão")
+turma = st.sidebar.text_input("Turma")
+aluno = st.sidebar.text_input("Aluno")
+
+# Domínio cognitivo
 dominio = st.selectbox(
     "Domínio Cognitivo",
     ["Memorizar", "Compreender", "Aplicar", "Analisar", "Avaliar", "Criar"]
 )
 
-# Campos principais
-titulo = st.text_input("Título da Aula")
-tema = st.text_input("Tema")
+tema = st.text_input("Tema da atividade")
 
-st.divider()
+# Histórico
+if "historico" not in st.session_state:
+    st.session_state.historico = []
 
-# Função para gerar atividade
+# IA ou fallback
 def gerar_atividade(dominio, tema):
-    atividades = {
-        "Memorizar": f"Liste os principais conceitos sobre {tema}.",
-        "Compreender": f"Explique com suas palavras o tema: {tema}.",
-        "Aplicar": f"Resolva um problema prático envolvendo {tema}.",
-        "Analisar": f"Compare diferentes abordagens sobre {tema}.",
-        "Avaliar": f"Defenda um ponto de vista sobre {tema}.",
-        "Criar": f"Desenvolva um projeto ou solução inovadora sobre {tema}."
-    }
-    return atividades.get(dominio, "")
+    if usar_ia:
+        prompt = f"""
+        Crie uma atividade educacional no nível {dominio}
+        sobre o tema: {tema}.
 
-# Botão gerar
-if st.button("🚀 Gerar Atividade"):
-    if tema == "":
-        st.warning("Digite um tema primeiro!")
+        Inclua:
+        - Enunciado
+        - Orientações
+        - Critérios de avaliação
+        """
+
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[{"role": "user", "content": prompt}]
+        )
+
+        return response.choices[0].message.content
     else:
-        atividade = gerar_atividade(dominio, tema)
+        return f"""
+        ATIVIDADE ({dominio})
 
-        st.subheader("📌 Atividade Gerada")
-        st.success(atividade)
+        Tema: {tema}
 
-        st.subheader("📝 Orientações ao Aluno")
-        st.info(f"""
-        • Leia atentamente a proposta  
-        • Organize suas ideias  
-        • Utilize exemplos práticos  
-        • Revise antes de entregar  
-        """)
+        Desenvolva uma atividade relacionada ao tema,
+        considerando o nível cognitivo {dominio}.
+        """
 
-        st.subheader("📊 Critérios de Avaliação")
-        st.write(f"""
-        ✔ Clareza na resposta  
-        ✔ Coerência com o tema  
-        ✔ Profundidade de análise  
-        ✔ Organização das ideias  
-        """)
+# PDF
+def gerar_pdf(texto):
+    pdf = FPDF()
+    pdf.add_page()
+    pdf.set_font("Arial", size=12)
 
+    for linha in texto.split("\n"):
+        pdf.multi_cell(0, 8, linha)
+
+    nome = f"atividade_{datetime.now().strftime('%H%M%S')}.pdf"
+    pdf.output(nome)
+    return nome
+
+# Botão
+if st.button("🚀 Gerar Atividade"):
+    if not tema:
+        st.warning("Digite um tema")
+    else:
+        resultado = gerar_atividade(dominio, tema)
+
+        registro = {
+            "turma": turma,
+            "aluno": aluno,
+            "tema": tema,
+            "dominio": dominio,
+            "conteudo": resultado
+        }
+
+        st.session_state.historico.append(registro)
+
+        st.subheader("📄 Atividade Gerada")
+        st.write(resultado)
+
+        arquivo = gerar_pdf(resultado)
+        with open(arquivo, "rb") as f:
+            st.download_button("📥 Baixar PDF", f, file_name=arquivo)
+
+# Histórico
 st.divider()
+st.subheader("📚 Histórico")
 
-# Extra: mapas mentais
-with st.expander("🧩 Mapas Mentais Colaborativos"):
-    st.write(f"""
-    Crie um mapa mental sobre **{tema if tema else "o tema escolhido"}** contendo:
-
-    • Conceitos principais  
-    • Relações entre ideias  
-    • Exemplos práticos  
-    • Aplicações no mundo real  
-    """)
-
-st.divider()
-
-st.caption("Desenvolvido para uso educacional 🚀")
+for item in reversed(st.session_state.historico):
+    with st.expander(f"{item['tema']} - {item['dominio']}"):
+        st.write(f"Turma: {item['turma']}")
+        st.write(f"Aluno: {item['aluno']}")
+        st.write(item["conteudo"])
